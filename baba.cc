@@ -3,15 +3,56 @@
 #include <signal.h>
 #include <spawn.h>
 #include <stdexcept>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string>
 #include <string.h>
 #include <sys/prctl.h>
-#include <sys/signalfd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include "config.h"
+
+#ifndef NSIG
+#define NSIG 65
+#endif
+
+#ifdef HAVE_SYS_SIGNALFD_H
+#include <sys/signalfd.h>
+#else
+#include <sys/syscall.h>
+int signalfd(int fd, const sigset_t *sigs, int flags)
+{
+        return syscall(__NR_signalfd4, fd, sigs, NSIG/8, flags);
+}
+struct signalfd_siginfo {
+        uint32_t  ssi_signo;
+        int32_t   ssi_errno;
+        int32_t   ssi_code;
+        uint32_t  ssi_pid;
+        uint32_t  ssi_uid;
+        int32_t   ssi_fd;
+        uint32_t  ssi_tid;
+        uint32_t  ssi_band;
+        uint32_t  ssi_overrun;
+        uint32_t  ssi_trapno;
+        int32_t   ssi_status;
+        int32_t   ssi_int;
+        uint64_t  ssi_ptr;
+        uint64_t  ssi_utime;
+        uint64_t  ssi_stime;
+        uint64_t  ssi_addr;
+        uint16_t  ssi_addr_lsb;
+        uint8_t   pad[128-12*4-4*8-2];
+};
+#endif
+
+#ifndef PR_SET_CHILD_SUBREAPER
+#define PR_SET_CHILD_SUBREAPER 36
+#else
+#endif
 
 class syserror:public std::exception {
     std::string msg_;
@@ -196,7 +237,7 @@ public:
                         if (tracked)
                             failed_count_++;
                         if (log_level_ >= VERBOSE) {
-                            if(exited)
+                            if (exited)
                                 std::cerr << pid << " exited with status " << status << std::endl;
                             else
                                 std::cerr << pid << " terminated early" << std::endl;
@@ -229,7 +270,7 @@ private:
             break;
         case GROUP:
             sigdelset(&mask_, sig);
-            if(signalfd(sfd_, &mask_, 0) < 0)
+            if (signalfd(sfd_, &mask_, 0) < 0)
                 throw syserror("signalfd off");
 
             if (kill(0, sig) < 0)
@@ -242,7 +283,7 @@ private:
             sigwait(&waited_for, &received);
 
             sigaddset(&mask_, sig);
-            if(signalfd(sfd_, &mask_, 0) < 0)
+            if (signalfd(sfd_, &mask_, 0) < 0)
                 throw syserror("signalfd on");
             break;
         }
@@ -262,3 +303,4 @@ int main(int argc, char **argv, char **envp)
         return 1;
     }
 }
+

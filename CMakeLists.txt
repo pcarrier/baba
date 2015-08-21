@@ -1,2 +1,6 @@
+cmake_minimum_required(VERSION 2.8)
 project(baba)
+include (CheckIncludeFiles)
+check_include_files (sys/signalfd.h HAVE_SYS_SIGNALFD_H)
+configure_file (${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 add_executable(baba baba.cc)
