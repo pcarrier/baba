@@ -107,16 +107,23 @@ enum TargetType {
     GROUP
 };
 
+enum ExitStatus {
+    CHILD_STATUS,
+    FAILURE_COUNT
+};
+
 class Runner {
     const pid_t pid_;
     std::string path_;
     pid_t child_pid_;
+    int child_status_code_;
     sigset_t mask_;
     int sfd_;
     LogLevel log_level_;
     bool failed_count_;
     TargetType signal_forwarding_;
     TargetType failure_tracking_;
+    ExitStatus exit_status_;
 
 public:
     Runner(int argc, char **argv, char **envp) :
@@ -124,10 +131,12 @@ public:
         failed_count_(0),
         log_level_(CRITICAL),
         signal_forwarding_(GROUP),
-        failure_tracking_(CHILD)
+        failure_tracking_(CHILD),
+        child_status_code_(0),
+        exit_status_(CHILD_STATUS)
     {
         int c;
-        while ((c = getopt(argc, argv, "t:f:l:")) != -1)
+        while ((c = getopt(argc, argv, "t:f:l:e:")) != -1)
             switch (c) {
             case 'l':
                 switch (*optarg) {
@@ -172,6 +181,18 @@ public:
                     break;
                 default:
                     throw std::runtime_error("invalid tracking target");
+                }
+                break;
+            case 'e':
+                switch (*optarg) {
+                case 'c':
+                    exit_status_ = CHILD_STATUS;
+                    break;
+                case 'f':
+                    exit_status_ = FAILURE_COUNT;
+                    break;
+                default:
+                    throw std::runtime_error("invalid exit status choice");
                 }
                 break;
             case '?':
@@ -231,9 +252,12 @@ public:
                 while ((pid = waitpid(0, &stat, WNOHANG)) >= 0) {
                     bool exited = WIFEXITED(stat);
                     int status = WEXITSTATUS(stat);
+                    bool is_child = pid == child_pid_;
                     bool tracked = (failure_tracking_ == GROUP ||
-                                    (failure_tracking_ == CHILD && pid == child_pid_));
+                                    (failure_tracking_ == CHILD && is_child));
                     if (!exited || status) {
+                        if (is_child)
+                            child_status_code_ = status;
                         if (tracked)
                             failed_count_++;
                         if (log_level_ >= VERBOSE) {
@@ -257,7 +281,10 @@ public:
 private:
     int finished() {
         close(sfd_);
-        return failed_count_ > 127 ? 127 : failed_count_;
+        if (exit_status_ == CHILD_STATUS)
+            return child_status_code_;
+        else
+            return failed_count_ > 127 ? 127 : failed_count_;
     }
 
     void forward_signal(int sig) {
