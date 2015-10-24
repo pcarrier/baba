@@ -2,7 +2,7 @@
 
 ## Building
 
-    $ cmake . && make
+    $ cmake . && make install
 
 ## Usage
 
@@ -10,8 +10,7 @@ When command line arguments are described in this section,
 asterisks (*) are used to indicate a default behaviour.
 
 `baba` spawns a process specified on the command line,
-and doesn't return until its descendants
-(not only immediate children) return.
+and doesn't return until its descendants return.
 
 It always creates a new process group for itself and its descendants.
 
