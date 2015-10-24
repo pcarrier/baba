@@ -13,7 +13,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "config.h"
+#include <config.h>
 
 /**
  * Higher than the highest signal number.

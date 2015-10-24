@@ -1,0 +1,11 @@
+sudo: false
+language: cpp
+compiler:
+- gcc
+- clang
+script:
+- mkdir build
+- cd build; cmake ..
+- cd build; make
+- cd build; make test
+- cd build; make install DESTDIR=../dest
