@@ -17,7 +17,7 @@
 
 /**
  * Higher than the highest signal number.
- * Widespread in libcs but not in POSIX, see Austin 741
+ * Widespread in libcs but not in POSIX, see Austin bug 741.
  */
 #ifndef NSIG
 #define NSIG 65
@@ -28,7 +28,7 @@
 #else
 /*
  * Our very own signalfd wrapper.
- * We still requires recent kernel headers (2.6.22+)
+ * We still require recent kernel headers (2.6.22+).
  */
 
 #include <sys/syscall.h>
