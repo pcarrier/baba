@@ -302,50 +302,60 @@ class Runner {
 
             if (info.ssi_signo == SIGCHLD) {
                 // One or more children (not descendants!) finished.
-                pid_t pid;
+                
                 int stat;
-                while ((pid = waitpid(0, &stat, WNOHANG)) >= 0) {
-                    bool exited = WIFEXITED(stat);
-                    int status = WEXITSTATUS(stat);
-                    bool is_first_child = pid == first_child_pid_;
-                    bool tracked = (track_fails_ == GROUP ||
-                        (track_fails_ == CHILD && is_first_child));
-                    if (!exited || status) {
-                        if (is_first_child)
-                            first_child_status_ = status;
-                        if (tracked)
-                            failed_count_++;
-                        if (log_level_ >= VERBOSE) {
-                            if (exited) {
-                                std::cerr
-                                    << pid
-                                    << " exited with status "
-                                    << status
-                                    << std::endl;
-                            }
-                            else {
-                                std::cerr
-                                    << pid
-                                    << " terminated early"
-                                    << std::endl;
-                            }
-                        }
-                    } else if (log_level_ == TRACE)
-                        std::cerr << pid <<
-                            " successfully exited" <<
-                            std::endl;
+                pid_t pid = waitpid(0, &stat, WNOHANG);
+                while (pid > 0) {
+                    _handle_stat(pid, stat);
+                    pid = waitpid(0, &stat, WNOHANG);
                 }
-                if (errno == ECHILD)
-                    // We're all out of children
-                    return _finished();
-                throw syserror("waitpid");
+                if (pid < 0) {
+                    if (errno == ECHILD) {
+                        return _finished();
+                    } else {
+                        throw syserror("waitpid");
+                    }
+                }
+            } else {
+                _forward_signal(info.ssi_signo);
             }
-
-            _forward_signal(info.ssi_signo);
         }
     }
 
  private:
+    void _handle_stat(pid_t pid, int stat) {
+        bool exited = WIFEXITED(stat);
+        int status = WEXITSTATUS(stat);
+        bool is_first_child = pid == first_child_pid_;
+        bool tracked = (track_fails_ == GROUP ||
+            (track_fails_ == CHILD && is_first_child));
+        if (!exited || status) {
+            if (is_first_child)
+                first_child_status_ = status;
+            if (tracked)
+                failed_count_++;
+            if (log_level_ >= VERBOSE) {
+                if (exited) {
+                    std::cerr
+                        << pid
+                        << " exited with status "
+                        << status
+                        << std::endl;
+                }
+                else {
+                    std::cerr
+                        << pid
+                        << " terminated early"
+                        << std::endl;
+                }
+            }
+        } else if (log_level_ == TRACE) {
+            std::cerr << pid <<
+                " successfully exited" <<
+                std::endl;
+        }
+    }
+
     int _finished() {
         close(sfd_);
         if (exit_status_ == CHILD_STATUS)
