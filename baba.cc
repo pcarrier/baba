@@ -1,3 +1,6 @@
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
+
 #include <errno.h>
 #include <iostream>
 #include <signal.h>
@@ -403,3 +406,5 @@ int main(int argc, char **argv, char **envp)
         return 1;
     }
 }
+
+#pragma GCC diagnostic pop
