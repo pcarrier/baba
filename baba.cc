@@ -143,7 +143,7 @@ class Runner {
     sigset_t mask_;          // Signals managed by signalfd(2)
     int sfd_;                // File descriptor used for signalfd(2)
     LogLevel log_level_;
-    bool failed_count_;      // Number of children (not descendants!) that failed so far
+    int failed_count_;       // Number of children (not descendants!) that failed so far
     TargetType signal_fwd_;  // Which process(es) do we forward signals to?
     TargetType track_fails_; // Which process(es) do we track the failure of?
     ExitStatus exit_status_; // What do we want to exit with?
